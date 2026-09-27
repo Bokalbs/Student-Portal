@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attendance Taker</title>
+<link rel="icon" href="favicon.png">
+<style>
+  :root {
+    --primary: #1e40af; --primary-dark: #1e3a8a; --accent: #fbbf24; --accent-dark: #d97706;
+    --bg: #f4f6fb; --card: #ffffff; --text: #1f2937; --muted: #6b7280; --border: #e5e7eb;
+    --pass: #059669; --late: #d97706; --absent: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background: linear-gradient(160deg, #eef2ff 0%, #f4f6fb 55%, #fffbeb 100%);
+    color: var(--text); min-height: 100vh; padding: 16px;
+  }
+  .card {
+    background: var(--card); border-radius: 14px; border-top: 5px solid var(--accent);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08); max-width: 480px; margin: 0 auto; padding: 24px 20px;
+  }
+  h1 { font-size: 1.2rem; margin: 0 0 4px; color: var(--primary-dark); }
+  .schoolHeader { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--accent-dark); margin: 0 0 8px; }
+  input[type=password], input[type=date] {
+    width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 8px;
+    font-size: 1rem; outline: none; margin-top: 8px;
+  }
+  button {
+    width: 100%; margin-top: 16px; padding: 13px; border: none; border-radius: 8px;
+    background: var(--primary); color: white; font-size: 1rem; font-weight: 600; cursor: pointer;
+  }
+  button:hover { background: var(--primary-dark); }
+  button:disabled { opacity: 0.6; cursor: not-allowed; }
+  #error { color: var(--absent); font-size: 0.85rem; margin-top: 10px; display: none; text-align: center; }
+  .dateNav { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .dateNav button { margin-top: 0; width: auto; padding: 10px 14px; }
+  .dateNav input { margin-top: 0; flex: 1; }
+  .studentRow {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 12px 0; border-bottom: 1px solid var(--border);
+  }
+  .studentRow .name { font-size: 0.92rem; font-weight: 600; flex: 1; }
+  .statusBtns { display: flex; gap: 4px; }
+  .statusBtn {
+    all: unset; cursor: pointer; width: 38px; height: 38px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;
+    border: 1.5px solid var(--border); color: var(--muted);
+  }
+  .statusBtn.P.selected { background: var(--pass); color: #fff; border-color: var(--pass); }
+  .statusBtn.L.selected { background: var(--late); color: #fff; border-color: var(--late); }
+  .statusBtn.A.selected { background: var(--absent); color: #fff; border-color: var(--absent); }
+  .saveBar { position: sticky; bottom: 0; background: var(--card); padding-top: 10px; }
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--primary-dark); color: #fff; padding: 10px 18px; border-radius: 20px;
+    font-size: 0.85rem; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+  .spinner {
+    display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.5);
+    border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite;
+    vertical-align: middle; margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .muted { color: var(--muted); font-size: 0.85rem; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<div class="card" id="loginCard">
+  <div class="schoolHeader">SHS-NNHS &middot; Teacher Tool</div>
+  <h1>✅ Attendance Taker</h1>
+  <p class="muted">For your use only — not visible to students.</p>
+  <label>Teacher Passcode</label>
+  <input type="password" id="passcode" autocomplete="off">
+  <button id="loginBtn" onclick="login()">Open</button>
+  <div id="error"></div>
+</div>
+
+<div class="card" id="mainCard" style="display:none;">
+  <div class="schoolHeader">SHS-NNHS &middot; Teacher Tool</div>
+  <h1>✅ Attendance Taker</h1>
+
+  <div class="dateNav">
+    <button onclick="shiftDate(-1)">◀</button>
+    <input type="date" id="dateInput" onchange="loadDate()">
+    <button onclick="shiftDate(1)">▶</button>
+  </div>
+  <div class="muted" id="dateStatus"></div>
+
+  <div id="studentList" style="margin-top:14px;"></div>
+
+  <div class="saveBar">
+    <button id="saveBtn" onclick="saveAttendance()">Save Attendance</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ⬇️ Same Apps Script Web App URL as the student portal
+  const API_URL = "PASTE_YOUR_APPS_SCRIPT_URL_HERE";
+
+  let passcode = '';
+  let students = []; // [{username, name}]
+  let statuses = {}; // username -> 'P'|'L'|'A'
+
+  function todayISO() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+
+  async function login() {
+    passcode = document.getElementById('passcode').value.trim();
+    const err = document.getElementById('error');
+    const btn = document.getElementById('loginBtn');
+    err.style.display = 'none';
+    if (!passcode) { err.textContent = 'Enter the passcode.'; err.style.display = 'block'; return; }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Opening...';
+
+    document.getElementById('dateInput').value = todayISO();
+
+    try {
+      await loadDate();
+      document.getElementById('loginCard').style.display = 'none';
+      document.getElementById('mainCard').style.display = 'block';
+    } catch (e) {
+      err.textContent = 'Wrong passcode or connection issue.';
+      err.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Open';
+    }
+  }
+
+  function shiftDate(days) {
+    const input = document.getElementById('dateInput');
+    const d = new Date(input.value + 'T00:00:00');
+    d.setDate(d.getDate() + days);
+    input.value = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    loadDate();
+  }
+
+  async function loadDate() {
+    const date = document.getElementById('dateInput').value;
+    const statusEl = document.getElementById('dateStatus');
+    statusEl.textContent = 'Loading...';
+
+    const url = `${API_URL}?action=teacherAttendance&passcode=${encodeURIComponent(passcode)}&date=${date}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || 'Failed to load');
+
+    students = data.students || [];
+    statuses = {};
+    (data.existing || []).forEach(e => { statuses[e.username] = e.status; });
+
+    statusEl.textContent = data.columnExists
+      ? `${students.length} students — editing existing records`
+      : `${students.length} students — this date has no attendance column yet`;
+
+    renderStudents();
+  }
+
+  function renderStudents() {
+    const list = document.getElementById('studentList');
+    list.innerHTML = '';
+    students.forEach(s => {
+      const row = document.createElement('div');
+      row.className = 'studentRow';
+      const current = statuses[s.username] || '';
+      row.innerHTML = `
+        <div class="name">${s.name}</div>
+        <div class="statusBtns">
+          <button class="statusBtn P ${current==='P'?'selected':''}" onclick="setStatus('${s.username}','P',this)">P</button>
+          <button class="statusBtn L ${current==='L'?'selected':''}" onclick="setStatus('${s.username}','L',this)">L</button>
+          <button class="statusBtn A ${current==='A'?'selected':''}" onclick="setStatus('${s.username}','A',this)">A</button>
+        </div>
+      `;
+      list.appendChild(row);
+    });
+  }
+
+  function setStatus(username, status, btnEl) {
+    statuses[username] = status;
+    const row = btnEl.closest('.studentRow');
+    row.querySelectorAll('.statusBtn').forEach(b => b.classList.remove('selected'));
+    btnEl.classList.add('selected');
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.display = 'block';
+    setTimeout(() => { t.style.display = 'none'; }, 2500);
+  }
+
+  async function saveAttendance() {
+    const btn = document.getElementById('saveBtn');
+    const date = document.getElementById('dateInput').value;
+    const records = Object.keys(statuses).map(username => ({ username, status: statuses[username] }));
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Saving...';
+
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'saveAttendance', passcode, date, records })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('✅ Attendance saved for ' + date);
+      } else {
+        showToast('⚠️ ' + (data.message || 'Save failed'));
+      }
+    } catch (e) {
+      showToast('⚠️ Could not connect.');
+    }
+    btn.disabled = false;
+    btn.textContent = 'Save Attendance';
+  }
+</script>
+
+</body>
+</html>
