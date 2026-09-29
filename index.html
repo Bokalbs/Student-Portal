@@ -127,9 +127,11 @@
   .attPill.present { background: #ecfdf5; color: #065f46; }
   .attPill.late { background: #fffbeb; color: #92400e; }
   .attPill.absent { background: #fef2f2; color: #991b1b; }
+  .attPill.excused { background: #f5f3ff; color: #5b21b6; }
   .attStatus-present { color: var(--pass); font-weight: 700; }
   .attStatus-late { color: var(--accent-dark); font-weight: 700; }
   .attStatus-absent { color: var(--fail); font-weight: 700; }
+  .attStatus-excused { color: #7c3aed; font-weight: 700; }
 
   /* Leaderboard tab */
   .lbRow {
@@ -291,7 +293,7 @@
   // ✏️ Edit these to match you — shown on the downloadable grade slip
   const ADVISER_NAME = "ROBERTO J. TIRAO JR.";
   const ADVISER_POSITION = "Adviser";
-  const SIGNATURE_TEXT = "JtRao"; // rendered in a script font as a stand-in signature
+  const SIGNATURE_TEXT = "JRtirao"; // rendered in a script font as a stand-in signature
 
   const termLabels = { Term1: 'Term 1', Term2: 'Term 2', Term3: 'Term 3' };
   let currentStudentData = null; // holds the logged-in student's full response, used for the grade slip
@@ -539,6 +541,7 @@
       <div class="attPill present"><span class="num">${attendance.summary.present}</span><span class="lbl">Present</span></div>
       <div class="attPill late"><span class="num">${attendance.summary.late}</span><span class="lbl">Late</span></div>
       <div class="attPill absent"><span class="num">${attendance.summary.absent}</span><span class="lbl">Absent</span></div>
+      <div class="attPill excused"><span class="num">${attendance.summary.excused || 0}</span><span class="lbl">Excused</span></div>
     `;
     container.appendChild(summaryRow);
 
@@ -548,7 +551,7 @@
     attendance.records.forEach(r => {
       const tr = document.createElement('tr');
       const s = r.status.toLowerCase();
-      const cls = s.startsWith('p') ? 'attStatus-present' : s.startsWith('l') ? 'attStatus-late' : s.startsWith('a') ? 'attStatus-absent' : '';
+      const cls = s.startsWith('p') ? 'attStatus-present' : s.startsWith('l') ? 'attStatus-late' : s.startsWith('a') ? 'attStatus-absent' : s.startsWith('e') ? 'attStatus-excused' : '';
       tr.innerHTML = `<td>${r.date}</td><td class="${cls}">${r.status}</td>`;
       tbody.appendChild(tr);
     });
