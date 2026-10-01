@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Grade Viewer</title>
+<title>Student Portal</title>
 <link rel="icon" href="favicon.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -22,7 +22,7 @@
     --pass: #059669;
     --fail: #dc2626;
   }
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body {
     margin: 0;
     font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
@@ -81,13 +81,23 @@
 
   /* Portal tab nav */
   .portalTabs {
-    display: flex; gap: 6px; margin-top: 16px; border-bottom: 2px solid var(--border);
+    display: flex; gap: 4px; margin-top: 16px; border-bottom: 2px solid var(--border);
+    overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Firefox */
   }
+  .portalTabs::-webkit-scrollbar { display: none; } /* Chrome/Safari */
   .portalTabBtn {
     all: unset; cursor: pointer; padding: 10px 14px; font-size: 0.85rem; font-weight: 700;
     color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -2px;
+    white-space: nowrap; flex-shrink: 0; border-radius: 8px 8px 0 0;
+    -webkit-tap-highlight-color: transparent; transition: background 0.15s ease;
   }
-  .portalTabBtn.active { color: var(--primary-dark); border-bottom-color: var(--primary); }
+  .portalTabBtn:active { background: rgba(30, 64, 175, 0.08); }
+  .portalTabBtn.active {
+    color: var(--primary-dark); border-bottom-color: var(--primary);
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  }
   .portalTabPanel { display: none; padding-top: 16px; }
   .portalTabPanel.active { display: block; }
 
@@ -202,7 +212,7 @@
 
 <div class="card" id="loginCard">
   <div class="schoolHeader">SHS-NNHS &middot; A.Y. 2026-2027</div>
-  <h1>📊 Grade Viewer</h1>
+  <h1>📊 Student Portal</h1>
   <p class="subtitle">Enter your username and access code to view your portal.</p>
   <label for="username">Username</label>
   <input type="text" id="username" autocomplete="off" placeholder="e.g. juan.delacruz">
@@ -293,7 +303,7 @@
   // ✏️ Edit these to match you — shown on the downloadable grade slip
   const ADVISER_NAME = "ROBERTO J. TIRAO JR.";
   const ADVISER_POSITION = "Adviser";
-  const SIGNATURE_TEXT = "JRtirao"; // rendered in a script font as a stand-in signature
+  const SIGNATURE_TEXT = "JTirao"; // rendered in a script font as a stand-in signature
 
   const termLabels = { Term1: 'Term 1', Term2: 'Term 2', Term3: 'Term 3' };
   let currentStudentData = null; // holds the logged-in student's full response, used for the grade slip
